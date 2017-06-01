@@ -4,11 +4,11 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 import time
 import uPassMail
+import urllib.request
 
-username = 'yourCwlUserName'
+username = 'yourCwlUsername'
 password = 'yourCwlPassword'
 
-server = uPassMail.initializeEmail()
 attachments = []
 
 school_select_page = 'school_select_page.png'
@@ -25,48 +25,94 @@ dcap["phantomjs.page.settings.userAgent"] = (
 browser = webdriver.PhantomJS(desired_capabilities=dcap)
 browser.set_window_size(1120,550)
 
-browser.implicitly_wait(20)
-browser.get('https://upassbc.translink.ca/')
+browser.implicitly_wait(10)
 
-school_dropdown = browser.find_elements_by_xpath("//*[@id=\"PsiId\"]")
+def wait_for_internet():
+    while not checkping():
+        print("Error: No internet")
+        time.sleep(1)
+    print("Internet connection established")
 
-school_select = Select(school_dropdown[0])
-school_select.select_by_value("ubc")
+def checkping():
+    try:
+        urllib.request.urlopen('http://216.58.192.142', timeout=1)
+        return True
+    except urllib.error.URLError as err:
+        return False
 
-browser.execute_script('document.body.style.background = "white"')
-browser.save_screenshot(school_select_page)
-school_select_image = open(school_select_page,'rb')
-attachments.append(school_select_image)
+def checklen(array):
+    if not len(array):
+        print("Error: Element not found, checking internet...")
+        wait_for_internet()
+        runbrowser()
+        quit()
 
-school_submit = browser.find_elements_by_xpath("//*[@id=\"goButton\"]")
-school_submit[0].click()
 
-username_input = browser.find_elements_by_xpath("//*[@id=\"j_username\"]")
-password_input = browser.find_elements_by_xpath("//*[@id=\"password\"]")
-login_submit = browser.find_elements_by_xpath("//*[@id=\"col2\"]/form/fieldset/input")
+def runbrowser():
+    browser.get('https://upassbc.translink.ca/')
 
-username_input[0].send_keys(username)
-password_input[0].send_keys(password)
+    school_dropdown = browser.find_elements_by_xpath("//*[@id=\"PsiId\"]")
+    checklen(school_dropdown)
 
-browser.save_screenshot(login_page)
-login_image = open(login_page,'rb')
-attachments.append(login_image)
+    school_select = Select(school_dropdown[0])
+    school_select.select_by_value("ubc")
 
-login_submit[0].click()
+    browser.execute_script('document.body.style.background = "white"')
+    browser.save_screenshot(school_select_page)
+    school_select_image = open(school_select_page,'rb')
+    attachments.append(school_select_image)
 
-checkbox = browser.find_elements_by_xpath("//*[@id=\"chk_0\"]")
-submit = browser.find_elements_by_xpath("//*[@id=\"requestButton\"]")
+    school_submit = browser.find_elements_by_xpath("//*[@id=\"goButton\"]")
+    checklen(school_submit)
 
-time.sleep(5)
+    school_submit[0].click()
 
-checkbox[0].click()
+    username_input = browser.find_elements_by_xpath("//*[@id=\"j_username\"]")
+    password_input = browser.find_elements_by_xpath("//*[@id=\"password\"]")
+    login_submit = browser.find_elements_by_xpath("//*[@id=\"col2\"]/form/fieldset/input")
+    checklen(username_input)
+    checklen(password_input)
+    checklen(login_submit)
 
-top_of_screenshot = browser.find_elements_by_xpath("//*[@id=\"home-page\"]/div/div/div[2]/div[1]/div/div/h2")
-browser.execute_script("arguments[0].scrollIntoView();", top_of_screenshot[0])
+    username_input[0].send_keys(username)
+    password_input[0].send_keys(password)
 
-browser.execute_script('document.body.style.background = "white"')
-browser.save_screenshot(checkbox_page)
-checkbox_image = open(checkbox_page,'rb')
-attachments.append(checkbox_image)
+    browser.save_screenshot(login_page)
+    login_image = open(login_page,'rb')
+    attachments.append(login_image)
 
-uPassMail.sendEmail(server, 'Check screenshots to verify', attachments)
+    login_submit[0].click()
+
+    checkbox = browser.find_elements_by_xpath("//*[@id=\"chk_0\"]")
+    submit = browser.find_elements_by_xpath("//*[@id=\"requestButton\"]")
+    # don't check checkbox in case uPass is not available or alreay processed
+    # checklen(checkbox)
+    checklen(submit)
+
+    if(len(checkbox)):
+        checkbox[0].click()
+
+    top_of_screenshot = browser.find_elements_by_xpath("//*[@id=\"home-page\"]/div/div/div[2]/div[1]/div/div/h2")
+    browser.execute_script("arguments[0].scrollIntoView();", top_of_screenshot[0])
+
+    browser.execute_script('document.body.style.background = "white"')
+    browser.save_screenshot(checkbox_page)
+    checkbox_image = open(checkbox_page,'rb')
+    attachments.append(checkbox_image)
+
+    submit[0].click()
+
+    time.sleep(10)
+
+    browser.save_screenshot(confirmation_page)
+    confirmation_image = open(checkbox_page,'rb')
+    attachments.append(confirmation_image)
+
+
+    uPassMail.sendEmail(server, 'Check screenshots to verify', attachments)
+
+wait_for_internet()
+
+server = uPassMail.initializeEmail()
+
+runbrowser()
